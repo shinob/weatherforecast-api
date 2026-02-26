@@ -1,0 +1,5 @@
+# MCP Server Dependencies
+mcp>=1.0.0
+
+# HTTP Requests (既存のweather_forecast_clientが使用)
+requests>=2.31.0

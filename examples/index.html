@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地図で見る天気予報</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>📍 地図で見る天気予報</h1>
+            <p class="subtitle">地図上の任意の地点をクリックして24時間予報を表示</p>
+        </header>
+
+        <div class="content-wrapper">
+            <!-- 地図エリア -->
+            <section class="map-section">
+                <div id="map" class="map-container"></div>
+                <div class="map-instructions">
+                    <span class="instruction-icon">💡</span>
+                    地図上をクリックして天気予報を取得
+                </div>
+            </section>
+
+            <!-- 予報表示エリア -->
+            <section class="forecast-section">
+                <div id="welcome-message" class="welcome-message">
+                    <div class="welcome-icon">🗾</div>
+                    <h2>ようこそ</h2>
+                    <p>地図上の任意の地点をクリックすると、その地点の24時間天気予報が表示されます。</p>
+                    <div class="info-box">
+                        <h3>表示される情報</h3>
+                        <ul>
+                            <li>気温の推移</li>
+                            <li>降水量</li>
+                            <li>風速・風向</li>
+                            <li>湿度</li>
+                            <li>雲量</li>
+                            <li>気圧</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>天気予報を取得中...</p>
+                </div>
+
+                <div id="error-message" class="error-message hidden"></div>
+
+                <div id="forecast-container" class="forecast-container hidden">
+                    <div class="forecast-header">
+                        <h2 id="location-title">予報地点</h2>
+                        <div class="location-coords">
+                            <span id="coords-display"></span>
+                        </div>
+                        <div class="data-time">
+                            <span>データ生成時刻: </span>
+                            <span id="grib-time"></span>
+                        </div>
+                    </div>
+
+                    <!-- 詳細グラフエリア -->
+                    <div class="charts-section">
+                        <h3>詳細グラフ</h3>
+
+                        <div class="chart-container">
+                            <h4>気温推移 (°C)</h4>
+                            <canvas id="temp-chart"></canvas>
+                        </div>
+
+                        <div class="chart-container">
+                            <h4>降水量 (mm)</h4>
+                            <canvas id="rain-chart"></canvas>
+                        </div>
+
+                        <div class="chart-container">
+                            <h4>風速 (m/s)</h4>
+                            <canvas id="wind-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- 24時間予報グリッド -->
+                    <div class="forecast-grid" id="forecast-grid">
+                        <!-- JavaScriptで動的に生成 -->
+                    </div>
+                    
+                </div>
+            </section>
+        </div>
+
+        <footer class="footer">
+            <p>Powered by <a href="https://weather.ittools.biz/" target="_blank">ITtools Weather Service</a></p>
+            <p>Map data © <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> contributors</p>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- App scripts -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
