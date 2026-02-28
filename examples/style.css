@@ -286,6 +286,33 @@ body {
     margin-bottom: 20px;
 }
 
+.summary-overview {
+    grid-column: 1 / -1;
+    background: linear-gradient(120deg, #f0f7ff 0%, #eef3ff 100%);
+    border: 1px solid #d8e5ff;
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+
+.summary-headline {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #334e68;
+}
+
+.summary-period {
+    margin-top: 4px;
+    font-size: 0.85rem;
+    color: #607d8b;
+}
+
+.summary-description {
+    margin-top: 10px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #334e68;
+}
+
 .summary-card {
     background: #f4f7ff;
     border: 1px solid #dce5ff;
@@ -305,68 +332,6 @@ body {
     font-size: 1.05rem;
     font-weight: 700;
     color: #334e68;
-}
-
-/* 予報グリッド */
-.forecast-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 15px;
-    margin-bottom: 30px;
-}
-
-.forecast-item {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    border-radius: 10px;
-    padding: 15px;
-    text-align: center;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.forecast-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-}
-
-.forecast-time {
-    font-weight: bold;
-    color: #667eea;
-    margin-bottom: 10px;
-    font-size: 1.1rem;
-}
-
-.forecast-icon {
-    font-size: 2.5rem;
-    margin: 10px 0;
-}
-
-.forecast-temp {
-    font-size: 1.8rem;
-    font-weight: bold;
-    color: #333;
-    margin: 10px 0;
-}
-
-.forecast-details {
-    font-size: 0.85rem;
-    color: #555;
-    margin-top: 10px;
-}
-
-.forecast-details div {
-    margin: 5px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.detail-label {
-    font-weight: 500;
-}
-
-.detail-value {
-    font-weight: bold;
-    color: #667eea;
 }
 
 /* チャートセクション */

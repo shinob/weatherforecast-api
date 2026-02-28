@@ -239,33 +239,6 @@ function displayForecast(forecastData, lat, lng, gribTime) {
     document.getElementById('coords-display').textContent = `緯度: ${roundedLat}, 経度: ${roundedLng}`;
     document.getElementById('grib-time').textContent = formatGribTime(gribTime);
 
-    const gridContainer = document.getElementById('forecast-grid');
-    gridContainer.innerHTML = '';
-
-    forecastData.forEach((item) => {
-        const forecastItem = document.createElement('div');
-        forecastItem.className = 'forecast-item';
-
-        const icon = getWeatherIcon(item.TCDC, item.APCP);
-        const windDir = getWindDirection(item.WDIR);
-
-        forecastItem.innerHTML = `
-            <div class="forecast-time">${formatDateTime(item.datetime)}</div>
-            <div class="forecast-icon">${icon}</div>
-            <div class="forecast-temp">${item.TMP.toFixed(1)}°C</div>
-            <div class="forecast-details">
-                <div><span class="detail-label">降水</span><span class="detail-value">${item.APCP.toFixed(1)}mm</span></div>
-                <div><span class="detail-label">風速</span><span class="detail-value">${item.WSPD.toFixed(1)}m/s</span></div>
-                <div><span class="detail-label">風向</span><span class="detail-value">${windDir}</span></div>
-                <div><span class="detail-label">湿度</span><span class="detail-value">${item.RH.toFixed(0)}%</span></div>
-                <div><span class="detail-label">雲量</span><span class="detail-value">${item.TCDC.toFixed(0)}%</span></div>
-                <div><span class="detail-label">気圧</span><span class="detail-value">${item.PRES.toFixed(1)}hPa</span></div>
-            </div>
-        `;
-
-        gridContainer.appendChild(forecastItem);
-    });
-
     renderSummary(forecastData);
     drawCharts(forecastData);
 
@@ -284,16 +257,61 @@ function renderSummary(forecastData) {
 
     const minTemp = Math.min(...forecastData.map((item) => item.TMP));
     const maxTemp = Math.max(...forecastData.map((item) => item.TMP));
+    const avgTemp = forecastData.reduce((sum, item) => sum + item.TMP, 0) / forecastData.length;
     const avgHumidity = forecastData.reduce((sum, item) => sum + item.RH, 0) / forecastData.length;
     const totalRain = forecastData.reduce((sum, item) => sum + item.APCP, 0);
+    const avgCloud = forecastData.reduce((sum, item) => sum + item.TCDC, 0) / forecastData.length;
+    const avgPressure = forecastData.reduce((sum, item) => sum + item.PRES, 0) / forecastData.length;
+    const avgWind = forecastData.reduce((sum, item) => sum + item.WSPD, 0) / forecastData.length;
     const maxWind = Math.max(...forecastData.map((item) => item.WSPD));
+    const rainHours = forecastData.filter((item) => item.APCP >= 0.1).length;
+    const rainProbability = (rainHours / forecastData.length) * 100;
+    const peakRainData = forecastData.reduce((peak, item) => (item.APCP > peak.APCP ? item : peak), forecastData[0]);
+    const peakWindData = forecastData.reduce((peak, item) => (item.WSPD > peak.WSPD ? item : peak), forecastData[0]);
+    const tempDiff = forecastData[forecastData.length - 1].TMP - forecastData[0].TMP;
+
+    let tempTrendText = '大きな変化は少ない見込み';
+    if (tempDiff >= 2) {
+        tempTrendText = '時間の経過とともに気温が上がる見込み';
+    } else if (tempDiff <= -2) {
+        tempTrendText = '時間の経過とともに気温が下がる見込み';
+    }
+
+    const weatherCount = forecastData.reduce((count, item) => {
+        const icon = getWeatherIcon(item.TCDC, item.APCP);
+        count[icon] = (count[icon] || 0) + 1;
+        return count;
+    }, {});
+    const dominantWeatherIcon = Object.keys(weatherCount).sort((a, b) => weatherCount[b] - weatherCount[a])[0];
+    const weatherLabelMap = {
+        '☀️': '晴れ',
+        '⛅': '晴れ時々くもり',
+        '☁️': 'くもり',
+        '🌦️': 'にわか雨',
+        '🌧️': '雨',
+    };
+    const dominantWeather = weatherLabelMap[dominantWeatherIcon] || '天気変化あり';
+    const periodStart = formatDateTime(forecastData[0].datetime);
+    const periodEnd = formatDateTime(forecastData[forecastData.length - 1].datetime);
+    const peakWindDir = getWindDirection(peakWindData.WDIR);
 
     summaryEl.innerHTML = `
+        <div class="summary-overview">
+            <div class="summary-headline">${dominantWeatherIcon} ${dominantWeather}が中心の${selectedHours}時間</div>
+            <div class="summary-period">${periodStart} 〜 ${periodEnd}</div>
+            <div class="summary-description">${tempTrendText}。降水の可能性は${rainProbability.toFixed(0)}%で、強い雨のピークは${formatDateTime(peakRainData.datetime)}ごろ (${peakRainData.APCP.toFixed(1)}mm/h) の予想です。</div>
+        </div>
         <div class="summary-card"><span class="summary-label">最低気温</span><span class="summary-value">${minTemp.toFixed(1)}°C</span></div>
         <div class="summary-card"><span class="summary-label">最高気温</span><span class="summary-value">${maxTemp.toFixed(1)}°C</span></div>
+        <div class="summary-card"><span class="summary-label">平均気温</span><span class="summary-value">${avgTemp.toFixed(1)}°C</span></div>
         <div class="summary-card"><span class="summary-label">平均湿度</span><span class="summary-value">${avgHumidity.toFixed(0)}%</span></div>
+        <div class="summary-card"><span class="summary-label">平均雲量</span><span class="summary-value">${avgCloud.toFixed(0)}%</span></div>
+        <div class="summary-card"><span class="summary-label">平均気圧</span><span class="summary-value">${avgPressure.toFixed(1)}hPa</span></div>
         <div class="summary-card"><span class="summary-label">累積降水量</span><span class="summary-value">${totalRain.toFixed(1)}mm</span></div>
+        <div class="summary-card"><span class="summary-label">降水時間帯</span><span class="summary-value">${rainHours}/${forecastData.length}時間</span></div>
+        <div class="summary-card"><span class="summary-label">平均風速</span><span class="summary-value">${avgWind.toFixed(1)}m/s</span></div>
         <div class="summary-card"><span class="summary-label">最大風速</span><span class="summary-value">${maxWind.toFixed(1)}m/s</span></div>
+        <div class="summary-card"><span class="summary-label">最大風速の風向</span><span class="summary-value">${peakWindDir}</span></div>
     `;
 }
 
