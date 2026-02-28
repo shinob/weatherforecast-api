@@ -15,7 +15,7 @@
     <div class="app-container">
         <header class="header">
             <h1>📍 地図で見る天気予報</h1>
-            <p class="subtitle">地図上の任意の地点をクリックして24時間予報を表示</p>
+            <p class="subtitle">地図上の任意の地点をクリックして24〜72時間予報を表示</p>
         </header>
 
         <div class="content-wrapper">
@@ -26,6 +26,10 @@
                     <span class="instruction-icon">💡</span>
                     地図上をクリックして天気予報を取得
                 </div>
+                <div class="map-actions">
+                    <button id="use-location-btn" class="action-btn secondary-btn">現在地を使う</button>
+                    <button id="refresh-btn" class="action-btn secondary-btn" disabled>最新データを再取得</button>
+                </div>
             </section>
 
             <!-- 予報表示エリア -->
@@ -33,7 +37,7 @@
                 <div id="welcome-message" class="welcome-message">
                     <div class="welcome-icon">🗾</div>
                     <h2>ようこそ</h2>
-                    <p>地図上の任意の地点をクリックすると、その地点の24時間天気予報が表示されます。</p>
+                    <p>地図上の任意の地点をクリックすると、その地点の24〜72時間天気予報が表示されます。</p>
                     <div class="info-box">
                         <h3>表示される情報</h3>
                         <ul>
@@ -64,7 +68,18 @@
                             <span>データ生成時刻: </span>
                             <span id="grib-time"></span>
                         </div>
+                        <div class="forecast-controls">
+                            <label for="hours-select">表示時間:</label>
+                            <select id="hours-select">
+                                <option value="24" selected>24時間</option>
+                                <option value="48">48時間</option>
+                                <option value="72">72時間</option>
+                            </select>
+                            <button id="download-csv-btn" class="action-btn" disabled>CSVダウンロード</button>
+                        </div>
                     </div>
+
+                    <div id="forecast-summary" class="forecast-summary"></div>
 
                     <!-- 詳細グラフエリア -->
                     <div class="charts-section">

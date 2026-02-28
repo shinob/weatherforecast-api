@@ -33,19 +33,27 @@ export WEATHER_API_TOKEN="your_api_token_here"
 
 ### ステップ3: Claude Codeの設定
 
-Claude Codeの設定ファイルを編集します。
+MCPサーバーをClaude Codeに追加します。
 
-#### macOS/Linux
+#### 方法A: CLIコマンドで追加（推奨・最速）
 
 ```bash
-# 設定ファイルのパスを確認
-echo ~/.config/claude-code/claude_desktop_config.json
-
-# ファイルを編集
-nano ~/.config/claude-code/claude_desktop_config.json
+cd /path/to/weatherforecast-api
+claude mcp add --transport stdio weather-forecast -- python3 ${PWD}/mcp/server.py
 ```
 
-以下の内容を追加または編集：
+この方法なら設定は自動的に完了します！
+
+#### 方法B: 設定ファイルを手動で編集
+
+**ユーザースコープ（全プロジェクトで使用）**
+
+```bash
+# 設定ファイルを編集
+nano ~/.claude.json
+```
+
+以下の内容を追加：
 
 ```json
 {
@@ -63,9 +71,40 @@ nano ~/.config/claude-code/claude_desktop_config.json
 }
 ```
 
-**重要**: `args` のパスは、実際のserver.pyの絶対パスに変更してください。
+**プロジェクトスコープ（このプロジェクトのみ）**
 
-パスを確認するには：
+プロジェクトルートに `.mcp.json` を作成：
+
+```bash
+cd /path/to/weatherforecast-api
+nano .mcp.json
+```
+
+以下の内容を記述：
+
+```json
+{
+  "mcpServers": {
+    "weather-forecast": {
+      "command": "python3",
+      "args": [
+        "/absolute/path/to/weatherforecast-api/mcp/server.py"
+      ],
+      "env": {
+        "WEATHER_API_TOKEN": "${WEATHER_API_TOKEN:-api_sample}"
+      }
+    }
+  }
+}
+```
+
+**重要**: `args` のパスは絶対パスで指定してください。
+
+**プロジェクトスコープの利点**:
+- 環境変数のデフォルト値を設定可能（`${VAR:-default}` 構文）
+- チームメンバーと設定を共有できる（バージョン管理に含める）
+
+**パスの確認方法**:
 ```bash
 cd /path/to/weatherforecast-api/mcp
 pwd
@@ -73,39 +112,25 @@ pwd
 # この場合、パスは /home/username/weatherforecast-api/mcp/server.py
 ```
 
-#### Windows
+### ステップ4: 設定の確認
 
-```cmd
-# 設定ファイルのパスを確認
-echo %APPDATA%\claude-code\claude_desktop_config.json
+MCPサーバーが正しく登録されたか確認：
 
-# ファイルをメモ帳で編集
-notepad %APPDATA%\claude-code\claude_desktop_config.json
+```bash
+claude mcp list
 ```
 
-以下の内容を追加：
-
-```json
-{
-  "mcpServers": {
-    "weather-forecast": {
-      "command": "python",
-      "args": [
-        "C:\\Users\\YourName\\weatherforecast-api\\mcp\\server.py"
-      ],
-      "env": {
-        "WEATHER_API_TOKEN": "api_sample"
-      }
-    }
-  }
-}
+出力例：
+```
+weather-forecast (stdio)
+  Command: python3 /path/to/weatherforecast-api/mcp/server.py
 ```
 
-### ステップ4: Claude Codeを再起動
+### ステップ5: Claude Codeを再起動
 
 設定を反映させるため、Claude Codeを完全に終了してから再起動します。
 
-### ステップ5: 動作確認
+### ステップ6: 動作確認
 
 Claude Codeを起動し、以下のメッセージを送信してテストします：
 
@@ -159,19 +184,45 @@ MCPサーバーが正しく設定されていれば、Claude Codeが自動的に
 
 ### MCPサーバーが認識されない
 
-1. Claude Codeを完全に終了して再起動
-2. 設定ファイルのJSONフォーマットが正しいか確認
-3. server.pyのパスが正しいか確認（相対パスではなく絶対パス）
+1. MCPサーバーが登録されているか確認：
+   ```bash
+   claude mcp list
+   ```
+
+2. Claude Codeを完全に終了して再起動
+
+3. 設定ファイルのJSONフォーマットが正しいか確認：
+   ```bash
+   # ユーザースコープの場合
+   cat ~/.claude.json
+
+   # プロジェクトスコープの場合
+   cat .mcp.json
+   ```
+
+4. server.pyのパスが正しいか確認
+   - ユーザースコープ: 絶対パスを使用
+   - プロジェクトスコープ: 絶対パスを使用（相対パスはサポートされていません）
 
 ### "Tool not found" エラー
 
-設定ファイルのパスや、Python実行ファイルの名前を確認してください：
+1. MCPサーバーが起動しているか確認：
+   ```bash
+   # ログファイルを確認
+   tail -f ~/.weather-mcp.log
+   ```
 
-```bash
-# Pythonのパスを確認
-which python3  # macOS/Linux
-where python   # Windows
-```
+2. Pythonコマンドが正しいか確認：
+   ```bash
+   # Pythonのパスを確認
+   which python3  # macOS/Linux
+   where python   # Windows
+   ```
+
+3. server.pyが実行可能か手動テスト：
+   ```bash
+   python3 /path/to/weatherforecast-api/mcp/server.py
+   ```
 
 ### APIエラー
 

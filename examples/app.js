@@ -3,6 +3,11 @@ let map;
 let currentMarker;
 let tempChart, rainChart, windChart;
 
+let selectedLocation = null;
+let latestForecastData = [];
+let latestGribTime = '';
+let selectedHours = CONFIG.FORECAST_HOURS;
+
 // 天気アイコンを決定する関数
 function getWeatherIcon(cloudCover, precipitation) {
     if (precipitation > 1.0) {
@@ -13,9 +18,9 @@ function getWeatherIcon(cloudCover, precipitation) {
         return '☁️'; // 曇り
     } else if (cloudCover > 30) {
         return '⛅'; // 晴れ時々曇り
-    } else {
-        return '☀️'; // 晴れ
     }
+
+    return '☀️'; // 晴れ
 }
 
 // 風向を角度から方位に変換
@@ -35,19 +40,12 @@ function formatDateTime(dateTimeStr) {
     return `${month}/${day} ${hours}:00`;
 }
 
-// 詳細な日時フォーマット
-function formatDetailedDateTime(dateTimeStr) {
-    const date = new Date(dateTimeStr);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}年${month}月${day}日 ${hours}:${minutes}`;
-}
-
 // GRIB2ファイル時刻をフォーマット
 function formatGribTime(gribTimeStr) {
+    if (!gribTimeStr || gribTimeStr.length < 12) {
+        return '-';
+    }
+
     // Format: YYYYMMDDhhmmss
     const year = gribTimeStr.substring(0, 4);
     const month = gribTimeStr.substring(4, 6);
@@ -59,40 +57,109 @@ function formatGribTime(gribTimeStr) {
 
 // 地図を初期化
 function initMap() {
-    // 地図の作成
     map = L.map('map').setView(CONFIG.DEFAULT_MAP_CENTER, CONFIG.DEFAULT_ZOOM);
 
-    // OpenStreetMapタイルレイヤーを追加
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 18,
     }).addTo(map);
 
-    // 地図クリックイベント
     map.on('click', onMapClick);
 
     console.log('✅ 地図の初期化が完了しました');
 }
 
+function initControls() {
+    const refreshBtn = document.getElementById('refresh-btn');
+    const useLocationBtn = document.getElementById('use-location-btn');
+    const hoursSelect = document.getElementById('hours-select');
+    const downloadCsvBtn = document.getElementById('download-csv-btn');
+
+    useLocationBtn.addEventListener('click', useCurrentLocation);
+
+    refreshBtn.addEventListener('click', () => {
+        if (!selectedLocation) {
+            return;
+        }
+        fetchWeatherForecast(selectedLocation.lat, selectedLocation.lng);
+    });
+
+    hoursSelect.value = String(CONFIG.FORECAST_HOURS);
+    hoursSelect.addEventListener('change', (e) => {
+        selectedHours = Number.parseInt(e.target.value, 10);
+        if (latestForecastData.length > 0) {
+            renderCurrentForecast();
+        }
+    });
+
+    downloadCsvBtn.addEventListener('click', downloadForecastCsv);
+}
+
 // 地図クリック時の処理
 function onMapClick(e) {
-    const lat = e.latlng.lat.toFixed(7);
-    const lng = e.latlng.lng.toFixed(7);
+    const lat = Number(e.latlng.lat.toFixed(7));
+    const lng = Number(e.latlng.lng.toFixed(7));
 
     console.log(`📍 クリック位置: ${lat}, ${lng}`);
+    selectLocation(lat, lng);
+    fetchWeatherForecast(lat, lng);
+}
 
-    // マーカーを配置
+function selectLocation(lat, lng) {
+    const fixedLat = Number(lat.toFixed(7));
+    const fixedLng = Number(lng.toFixed(7));
+    selectedLocation = { lat: fixedLat, lng: fixedLng };
+
     if (currentMarker) {
         map.removeLayer(currentMarker);
     }
 
-    currentMarker = L.marker([lat, lng])
+    currentMarker = L.marker([fixedLat, fixedLng])
         .addTo(map)
-        .bindPopup(`<b>選択地点</b><br>緯度: ${lat}<br>経度: ${lng}`)
+        .bindPopup(`<b>選択地点</b><br>緯度: ${fixedLat}<br>経度: ${fixedLng}`)
         .openPopup();
 
-    // 天気予報を取得
-    fetchWeatherForecast(lat, lng);
+    document.getElementById('refresh-btn').disabled = false;
+}
+
+function useCurrentLocation() {
+    if (!navigator.geolocation) {
+        showError('このブラウザでは位置情報取得がサポートされていません。');
+        return;
+    }
+
+    hideError();
+    showLoading();
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = Number(position.coords.latitude.toFixed(7));
+            const lng = Number(position.coords.longitude.toFixed(7));
+
+            map.setView([lat, lng], 10);
+            selectLocation(lat, lng);
+            fetchWeatherForecast(lat, lng);
+        },
+        (error) => {
+            hideLoading();
+            let message = '現在地を取得できませんでした。';
+
+            if (error.code === error.PERMISSION_DENIED) {
+                message += ' ブラウザで位置情報の利用を許可してください。';
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+                message += ' 位置情報を取得できる環境か確認してください。';
+            } else if (error.code === error.TIMEOUT) {
+                message += ' タイムアウトしました。再度お試しください。';
+            }
+
+            showError(message);
+        },
+        {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 600000,
+        }
+    );
 }
 
 // 天気予報を取得
@@ -124,13 +191,16 @@ async function fetchWeatherForecast(lat, lng) {
             throw new Error(`APIエラー: コード ${data.code}`);
         }
 
+        if (!data.result || !Array.isArray(data.result.forecast) || data.result.forecast.length === 0) {
+            throw new Error('予報データが空です。');
+        }
+
         console.log('✅ 天気予報データを取得しました', data);
 
-        // 24時間分のデータを抽出
-        const forecast24h = data.result.forecast.slice(0, CONFIG.FORECAST_HOURS);
+        latestForecastData = data.result.forecast;
+        latestGribTime = data.result.grib2file_time;
 
-        // 予報を表示
-        displayForecast(forecast24h, lat, lng, data.result.grib2file_time);
+        renderCurrentForecast();
 
     } catch (error) {
         console.error('❌ エラー:', error);
@@ -142,7 +212,7 @@ async function fetchWeatherForecast(lat, lng) {
         } else if (error.message.includes('NetworkError')) {
             errorMessage += ': ネットワークエラーが発生しました。インターネット接続を確認してください。';
         } else {
-            errorMessage += ': ' + error.message;
+            errorMessage += `: ${error.message}`;
         }
 
         showError(errorMessage);
@@ -151,18 +221,28 @@ async function fetchWeatherForecast(lat, lng) {
     }
 }
 
+function renderCurrentForecast() {
+    if (!selectedLocation || latestForecastData.length === 0) {
+        return;
+    }
+
+    const dataToShow = latestForecastData.slice(0, selectedHours);
+    displayForecast(dataToShow, selectedLocation.lat, selectedLocation.lng, latestGribTime);
+}
+
 // 予報を表示
 function displayForecast(forecastData, lat, lng, gribTime) {
-    // ヘッダー情報を更新
-    document.getElementById('location-title').textContent = '📍 選択地点の24時間予報';
-    document.getElementById('coords-display').textContent = `緯度: ${lat}, 経度: ${lng}`;
+    const roundedLat = Number(lat).toFixed(7);
+    const roundedLng = Number(lng).toFixed(7);
+
+    document.getElementById('location-title').textContent = `📍 選択地点の${selectedHours}時間予報`;
+    document.getElementById('coords-display').textContent = `緯度: ${roundedLat}, 経度: ${roundedLng}`;
     document.getElementById('grib-time').textContent = formatGribTime(gribTime);
 
-    // グリッド表示
     const gridContainer = document.getElementById('forecast-grid');
     gridContainer.innerHTML = '';
 
-    forecastData.forEach((item, index) => {
+    forecastData.forEach((item) => {
         const forecastItem = document.createElement('div');
         forecastItem.className = 'forecast-item';
 
@@ -186,11 +266,74 @@ function displayForecast(forecastData, lat, lng, gribTime) {
         gridContainer.appendChild(forecastItem);
     });
 
-    // グラフを描画
+    renderSummary(forecastData);
     drawCharts(forecastData);
 
-    // 予報コンテナを表示
+    document.getElementById('download-csv-btn').disabled = false;
+
     showForecast();
+}
+
+function renderSummary(forecastData) {
+    const summaryEl = document.getElementById('forecast-summary');
+
+    if (!forecastData.length) {
+        summaryEl.innerHTML = '';
+        return;
+    }
+
+    const minTemp = Math.min(...forecastData.map((item) => item.TMP));
+    const maxTemp = Math.max(...forecastData.map((item) => item.TMP));
+    const avgHumidity = forecastData.reduce((sum, item) => sum + item.RH, 0) / forecastData.length;
+    const totalRain = forecastData.reduce((sum, item) => sum + item.APCP, 0);
+    const maxWind = Math.max(...forecastData.map((item) => item.WSPD));
+
+    summaryEl.innerHTML = `
+        <div class="summary-card"><span class="summary-label">最低気温</span><span class="summary-value">${minTemp.toFixed(1)}°C</span></div>
+        <div class="summary-card"><span class="summary-label">最高気温</span><span class="summary-value">${maxTemp.toFixed(1)}°C</span></div>
+        <div class="summary-card"><span class="summary-label">平均湿度</span><span class="summary-value">${avgHumidity.toFixed(0)}%</span></div>
+        <div class="summary-card"><span class="summary-label">累積降水量</span><span class="summary-value">${totalRain.toFixed(1)}mm</span></div>
+        <div class="summary-card"><span class="summary-label">最大風速</span><span class="summary-value">${maxWind.toFixed(1)}m/s</span></div>
+    `;
+}
+
+function downloadForecastCsv() {
+    if (!selectedLocation || latestForecastData.length === 0) {
+        showError('ダウンロードできる予報データがありません。');
+        return;
+    }
+
+    const rows = latestForecastData.slice(0, selectedHours);
+    const headers = ['datetime', 'TMP_C', 'APCP_mm', 'WSPD_mps', 'WDIR_deg', 'RH_percent', 'TCDC_percent', 'PRES_hPa'];
+
+    const csvRows = [headers.join(',')];
+
+    rows.forEach((item) => {
+        csvRows.push([
+            item.datetime,
+            item.TMP,
+            item.APCP,
+            item.WSPD,
+            item.WDIR,
+            item.RH,
+            item.TCDC,
+            item.PRES,
+        ].join(','));
+    });
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    const fileLat = selectedLocation.lat.toFixed(3);
+    const fileLng = selectedLocation.lng.toFixed(3);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `forecast_${fileLat}_${fileLng}_${selectedHours}h.csv`);
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 // グラフを描画
@@ -200,12 +343,10 @@ function drawCharts(forecastData) {
     const rains = forecastData.map(item => item.APCP);
     const winds = forecastData.map(item => item.WSPD);
 
-    // 既存のグラフを破棄
     if (tempChart) tempChart.destroy();
     if (rainChart) rainChart.destroy();
     if (windChart) windChart.destroy();
 
-    // 気温グラフ
     const tempCtx = document.getElementById('temp-chart').getContext('2d');
     tempChart = new Chart(tempCtx, {
         type: 'line',
@@ -241,7 +382,6 @@ function drawCharts(forecastData) {
         }
     });
 
-    // 降水量グラフ
     const rainCtx = document.getElementById('rain-chart').getContext('2d');
     rainChart = new Chart(rainCtx, {
         type: 'bar',
@@ -276,7 +416,6 @@ function drawCharts(forecastData) {
         }
     });
 
-    // 風速グラフ
     const windCtx = document.getElementById('wind-chart').getContext('2d');
     windChart = new Chart(windCtx, {
         type: 'line',
@@ -345,5 +484,6 @@ function hideForecast() {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 アプリケーションを起動しています...');
     initMap();
+    initControls();
     console.log('✅ アプリケーションの準備が完了しました');
 });

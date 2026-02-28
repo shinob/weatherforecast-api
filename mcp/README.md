@@ -38,11 +38,29 @@ source ~/.bashrc
 
 ## Claude Codeでの設定
 
-Claude Codeの設定ファイルにMCPサーバーを追加します。
+Claude CodeにMCPサーバーを追加する方法は2つあります。
 
-### macOS/Linux
+### 方法1: CLIコマンドで追加（推奨）
 
-`~/.config/claude-code/claude_desktop_config.json` を編集：
+プロジェクトディレクトリで以下のコマンドを実行：
+
+```bash
+cd /path/to/weatherforecast-api
+claude mcp add --transport stdio weather-forecast -- python3 ${PWD}/mcp/server.py
+```
+
+環境変数を設定する場合：
+
+```bash
+export WEATHER_API_TOKEN="your_api_token_here"
+claude mcp add --transport stdio weather-forecast -- python3 ${PWD}/mcp/server.py
+```
+
+### 方法2: 設定ファイルを手動で編集
+
+#### ユーザースコープ（全プロジェクトで使用）
+
+`~/.claude.json` を作成または編集：
 
 ```json
 {
@@ -62,9 +80,35 @@ Claude Codeの設定ファイルにMCPサーバーを追加します。
 
 **重要**: `args` のパスを実際のサーバーファイルの絶対パスに変更してください。例: `/home/username/weatherforecast-api/mcp/server.py`
 
-### Windows
+#### プロジェクトスコープ（このプロジェクトのみ）
 
-`%APPDATA%\claude-code\claude_desktop_config.json` を編集：
+プロジェクトルートに `.mcp.json` を作成：
+
+```json
+{
+  "mcpServers": {
+    "weather-forecast": {
+      "command": "python3",
+      "args": [
+        "/absolute/path/to/weatherforecast-api/mcp/server.py"
+      ],
+      "env": {
+        "WEATHER_API_TOKEN": "${WEATHER_API_TOKEN:-api_sample}"
+      }
+    }
+  }
+}
+```
+
+**重要**: `args` のパスは絶対パスで指定してください。
+
+**プロジェクトスコープの利点**:
+- チームメンバーと設定を共有できる（バージョン管理に含める）
+- 環境変数のデフォルト値を設定可能（`${VAR:-default}` 構文）
+
+#### Windowsの場合
+
+ユーザースコープ（`~/.claude.json`）:
 
 ```json
 {
@@ -72,7 +116,7 @@ Claude Codeの設定ファイルにMCPサーバーを追加します。
     "weather-forecast": {
       "command": "python",
       "args": [
-        "C:\\path\\to\\weatherforecast-api\\mcp\\server.py"
+        "C:\\Users\\YourName\\weatherforecast-api\\mcp\\server.py"
       ],
       "env": {
         "WEATHER_API_TOKEN": "your_api_token_here"
@@ -317,6 +361,24 @@ Claude: [get_weather_forecast ツールをJSON形式で使用]
 2. `search_cities` ツールで部分一致検索
 
 3. 都市名のスペルミスを確認（例: "おおさか" → "大阪"）
+
+### 設定ファイルの確認
+
+登録されているMCPサーバーを確認：
+
+```bash
+claude mcp list
+```
+
+設定ファイルの場所を確認：
+
+```bash
+# ユーザースコープ
+cat ~/.claude.json
+
+# プロジェクトスコープ
+cat .mcp.json
+```
 
 ### ログを確認する
 

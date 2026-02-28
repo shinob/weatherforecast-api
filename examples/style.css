@@ -76,6 +76,13 @@ body {
     font-weight: 500;
 }
 
+.map-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .instruction-icon {
     margin-right: 8px;
     font-size: 1.2rem;
@@ -224,6 +231,82 @@ body {
     color: #999;
 }
 
+.forecast-controls {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.forecast-controls label {
+    font-size: 0.9rem;
+    color: #555;
+    font-weight: 600;
+}
+
+.forecast-controls select {
+    padding: 8px 10px;
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
+}
+
+.action-btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #667eea;
+    color: white;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.secondary-btn {
+    background: #607d8b;
+}
+
+.action-btn:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.forecast-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: #f4f7ff;
+    border: 1px solid #dce5ff;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.summary-label {
+    font-size: 0.8rem;
+    color: #607d8b;
+}
+
+.summary-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #334e68;
+}
+
 /* 予報グリッド */
 .forecast-grid {
     display: grid;
@@ -361,4 +444,14 @@ body {
 
 .forecast-section::-webkit-scrollbar-thumb:hover {
     background: #764ba2;
+}
+
+@media (max-width: 640px) {
+    .map-container {
+        height: 420px;
+    }
+
+    .forecast-controls {
+        align-items: flex-start;
+    }
 }
